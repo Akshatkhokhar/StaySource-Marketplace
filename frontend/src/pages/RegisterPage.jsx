@@ -44,8 +44,8 @@ export default function RegisterPage() {
       toast.error("Passwords do not match");
       return;
     }
-    if (!form.phone) {
-      toast.error("Phone number is required");
+    if (!form.phone || form.phone.length !== 10) {
+      toast.error("Please enter a valid 10-digit phone number");
       return;
     }
     setStep(2);
@@ -57,7 +57,7 @@ export default function RegisterPage() {
       full_name: form.name,
       email: form.email,
       password: form.password,
-      phone: form.phone,
+      phone: `+91${form.phone}`,
       role: role
     });
     setIsLoading(false);
@@ -121,55 +121,73 @@ export default function RegisterPage() {
       <div className="auth-panel auth-right">
         <div style={{ maxWidth: 440, width: '100%', margin: '0 auto' }}>
 
-          {/* Role Toggle */}
-          <div style={{ display: 'flex', background: 'var(--surface-container)', borderRadius: 6, padding: 4, marginBottom: 28 }}>
-            {[
-              { v: 'hotel_owner', l: 'I\'m a Hotel Buyer' },
-              { v: 'vendor', l: 'I\'m a Vendor' },
-            ].map(r => (
-              <button
-                type="button"
-                key={r.v}
-                id={`reg-role-${r.v}`}
-                onClick={() => setRole(r.v)}
-                style={{
-                  flex: 1, padding: '10px',
-                  borderRadius: 4, fontSize: 13, fontWeight: 600,
-                  transition: 'all 0.2s',
-                  background: role === r.v ? '#fff' : 'transparent',
-                  color: role === r.v ? 'var(--primary)' : 'var(--on-surface-variant)',
-                  boxShadow: role === r.v ? '0 1px 4px rgba(22,28,39,0.08)' : 'none',
-                  border: 'none',
-                  cursor: 'pointer'
-                }}
-              >
-                {r.l}
-              </button>
-            ))}
-          </div>
 
           {/* Step 1: Account */}
           {step === 1 && (
             <>
               <h2 className="auth-form-title">Create Account</h2>
-              <p className="auth-form-sub">Step 1 of 2 — Your login credentials</p>
+              <p className="auth-form-sub" style={{ marginBottom: 20 }}>Step 1 of 2 — Your login credentials</p>
+
+              {/* Role Toggle */}
+              <div style={{ display: 'flex', background: 'var(--surface-container)', borderRadius: 6, padding: 4, marginBottom: 28 }}>
+                {[
+                  { v: 'hotel_owner', l: 'I\'m a Hotel Buyer' },
+                  { v: 'vendor', l: 'I\'m a Vendor' },
+                ].map(r => (
+                  <button
+                    type="button"
+                    key={r.v}
+                    id={`reg-role-${r.v}`}
+                    onClick={() => setRole(r.v)}
+                    style={{
+                      flex: 1, padding: '10px',
+                      borderRadius: 4, fontSize: 13, fontWeight: 600,
+                      transition: 'all 0.2s',
+                      background: role === r.v ? '#fff' : 'transparent',
+                      color: role === r.v ? 'var(--primary)' : 'var(--on-surface-variant)',
+                      boxShadow: role === r.v ? '0 1px 4px rgba(22,28,39,0.08)' : 'none',
+                      border: 'none',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {r.l}
+                  </button>
+                ))}
+              </div>
               <div className="auth-form">
                 <div className="input-group">
                   <label className="input-label" htmlFor="reg-name">Full Name</label>
-                  <input id="reg-name" className="input" placeholder="Your full name" value={form.name} onChange={e => update('name', e.target.value)} required />
+                  <input id="reg-name" className="input" value={form.name} onChange={e => update('name', e.target.value)} required />
                 </div>
                 <div className="input-group">
                   <label className="input-label" htmlFor="reg-email">Work Email</label>
-                  <input id="reg-email" type="email" className="input" placeholder="you@company.com" value={form.email} onChange={e => update('email', e.target.value)} required />
+                  <input id="reg-email" type="email" className="input" value={form.email} onChange={e => update('email', e.target.value)} required />
                 </div>
                 <div className="input-group">
                   <label className="input-label" htmlFor="reg-phone">Phone Number</label>
-                  <input id="reg-phone" type="tel" className="input" placeholder="+1 (555) 000-0000" value={form.phone} onChange={e => update('phone', e.target.value)} required />
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                    <span style={{ 
+                      position: 'absolute', left: '12px', color: 'var(--on-surface-variant)', 
+                      fontSize: 14, fontWeight: 600, pointerEvents: 'none' 
+                    }}>+91</span>
+                    <input 
+                      id="reg-phone" 
+                      type="tel" 
+                      className="input" 
+                      value={form.phone} 
+                      onChange={e => {
+                        const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        update('phone', val);
+                      }} 
+                      required 
+                      style={{ paddingLeft: '45px', width: '100%' }}
+                    />
+                  </div>
                 </div>
                 <div className="input-group">
                   <label className="input-label" htmlFor="reg-password">Password</label>
                   <div style={{ position: 'relative' }}>
-                    <input id="reg-password" type={showPassword ? 'text' : 'password'} className="input" placeholder="Minimum 8 characters" value={form.password} onChange={e => update('password', e.target.value)} required minLength="8" style={{ width: '100%', paddingRight: '40px' }} />
+                    <input id="reg-password" type={showPassword ? 'text' : 'password'} className="input" value={form.password} onChange={e => update('password', e.target.value)} required minLength="8" style={{ width: '100%', paddingRight: '40px' }} />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
@@ -187,7 +205,7 @@ export default function RegisterPage() {
                  <div className="input-group">
                   <label className="input-label" htmlFor="reg-confirm-password">Confirm Password</label>
                   <div style={{ position: 'relative' }}>
-                    <input id="reg-confirm-password" type={showConfirmPassword ? 'text' : 'password'} className="input" placeholder="Match your password" value={form.confirmPassword} onChange={e => update('confirmPassword', e.target.value)} required minLength="8" style={{ width: '100%', paddingRight: '40px' }} />
+                    <input id="reg-confirm-password" type={showConfirmPassword ? 'text' : 'password'} className="input" value={form.confirmPassword} onChange={e => update('confirmPassword', e.target.value)} required minLength="8" style={{ width: '100%', paddingRight: '40px' }} />
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
@@ -222,7 +240,7 @@ export default function RegisterPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 14 }}>
                   <div><strong>Name:</strong> {form.name || '—'}</div>
                   <div><strong>Email:</strong> {form.email || '—'}</div>
-                  <div><strong>Phone:</strong> {form.phone || '—'}</div>
+                  <div><strong>Phone:</strong> {form.phone ? `+91 ${form.phone}` : '—'}</div>
                   <div><strong>Role:</strong> {role === 'hotel_owner' ? 'Hotel Buyer' : 'Vendor'}</div>
                 </div>
               </div>

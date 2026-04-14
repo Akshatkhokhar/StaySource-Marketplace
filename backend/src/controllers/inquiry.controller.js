@@ -1,5 +1,6 @@
 const inquiryService = require('../services/inquiry.service');
 const vendorService = require('../services/vendor.service');
+const Inquiry = require('../models/Inquiry.model');
 const { successResponse, errorResponse } = require('../utils/response');
 
 const createInquiry = async (req, res) => {
@@ -43,11 +44,18 @@ const replyToInquiry = async (req, res) => {
     const { message } = req.body;
     if (!message) return errorResponse(res, 400, 'Message cannot be empty');
 
-    const updated = await inquiryService.addReply(id, req.user._id, message);
-    if (!updated) return errorResponse(res, 404, 'Inquiry not found');
+    // Mongoose documents have .id as a string representation of ._id
+    const senderId = req.user.id || req.user._id;
+
+    const updated = await inquiryService.addReply(id, senderId, message, req.user.role);
+    if (!updated) {
+      console.log(`Reply failed: Inquiry with ID ${id} not found`);
+      return errorResponse(res, 404, 'Inquiry not found. It may have been deleted.');
+    }
 
     return successResponse(res, 200, 'Replied successfully', updated);
   } catch (err) {
+    console.error('Reply error:', err);
     return errorResponse(res, 500, 'Server error: ' + err.message);
   }
 };
@@ -55,5 +63,73 @@ const replyToInquiry = async (req, res) => {
 module.exports = {
   createInquiry,
   getMyInquiries,
-  replyToInquiry
+  replyToInquiry,
+  deleteInquiry: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const inquiry = await Inquiry.findById(id);
+      
+      if (!inquiry) {
+        return errorResponse(res, 404, 'Inquiry not found');
+      }
+
+      // Authorization Check
+      let isOwner = false;
+      
+      if (req.user.role === 'vendor') {
+        const vendorProfile = await vendorService.getVendorProfileById(req.user.id);
+        if (vendorProfile && inquiry.vendor_id.toString() === vendorProfile._id.toString()) {
+          isOwner = true;
+        }
+      } else {
+        if (inquiry.user_id && inquiry.user_id.toString() === req.user.id.toString()) {
+          isOwner = true;
+        }
+      }
+
+      if (!isOwner) {
+        return errorResponse(res, 403, 'You are not authorized to delete this chat');
+      }
+
+      await inquiryService.deleteInquiry(id);
+      return successResponse(res, 200, 'Inquiry deleted successfully');
+    } catch (err) {
+      return errorResponse(res, 500, 'Server error: ' + err.message);
+    }
+  },
+  deleteReply: async (req, res) => {
+    try {
+      const { id, replyId } = req.params;
+      const inquiry = await Inquiry.findById(id);
+      
+      if (!inquiry) {
+        return errorResponse(res, 404, 'Inquiry not found');
+      }
+
+      const reply = inquiry.replies.id(replyId);
+      if (!reply) {
+        return errorResponse(res, 404, 'Message not found');
+      }
+
+      // Only the sender can delete their own message
+      if (reply.sender_id.toString() !== req.user.id.toString()) {
+        return errorResponse(res, 403, 'You can only delete your own messages');
+      }
+
+      await inquiryService.deleteReply(id, replyId);
+      return successResponse(res, 200, 'Message deleted successfully');
+    } catch (err) {
+      return errorResponse(res, 500, 'Server error: ' + err.message);
+    }
+  },
+  markInquiryAsRead: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updated = await inquiryService.markAsRead(id, req.user.role);
+      if (!updated) return errorResponse(res, 404, 'Inquiry not found');
+      return successResponse(res, 200, 'Marked as read', updated);
+    } catch (err) {
+      return errorResponse(res, 500, 'Server error: ' + err.message);
+    }
+  }
 };

@@ -1,7 +1,7 @@
 import { useState, useEffect, useContext, useRef } from 'react'
 import { Link, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { AuthContext } from '../context/AuthContext'
-import { getMyInquiries, replyToInquiry } from '../api/inquiry.api'
+import { getMyInquiries, replyToInquiry, deleteInquiry, deleteMessage } from '../api/inquiry.api'
 import { toast } from 'react-toastify'
 
 function Sidebar({ rfqCount }) {
@@ -19,10 +19,10 @@ function Sidebar({ rfqCount }) {
   return (
     <aside className="sidebar">
       <div style={{ padding: '0 24px 24px' }}>
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
           <div className="navbar-logo-mark" style={{ background: 'var(--gold)', color: 'var(--primary)' }}>SS</div>
           <span style={{ fontSize: 18, fontWeight: 700, color: '#fff', letterSpacing: '-0.02em' }}>StaySource</span>
-        </Link>
+        </div>
         <div style={{ fontSize: 10, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', paddingLeft: 46 }}>Buyer Console</div>
       </div>
 
@@ -30,15 +30,6 @@ function Sidebar({ rfqCount }) {
         <Link to="/buyer-dashboard/rfqs" className={`sidebar-link ${location.pathname.startsWith('/buyer-dashboard/rfqs') || location.pathname === '/buyer-dashboard' ? 'active' : ''}`}>
           <span className="material-icons-round" style={{ fontSize: 20 }}>forum</span>
           <span style={{ flex: 1 }}>Messages</span>
-          {rfqCount > 0 && (
-            <span style={{ background: 'var(--gold)', color: 'var(--primary)', fontSize: 11, fontWeight: 700, borderRadius: 10, padding: '1px 7px' }}>
-              {rfqCount}
-            </span>
-          )}
-        </Link>
-        <Link to="/vendors" className="sidebar-link">
-          <span className="material-icons-round" style={{ fontSize: 20 }}>storefront</span>
-          <span style={{ flex: 1 }}>Marketplace</span>
         </Link>
       </nav>
 
@@ -110,6 +101,34 @@ function BuyerRfqsView() {
     }
   };
 
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this conversation? This cannot be undone.")) return;
+    try {
+      await deleteInquiry(id);
+      toast.success("Conversation deleted");
+      if (selectedId === id) setSelectedId(null);
+      const data = await getMyInquiries();
+      setInquiries(data.data || []);
+    } catch (e) {
+      toast.error(e.response?.data?.message || "Failed to delete conversation");
+    }
+  };
+
+  const handleDeleteReply = async (inquiryId, replyId) => {
+    if (!window.confirm("Delete this message?")) return;
+    try {
+      await deleteMessage(inquiryId, replyId);
+      const data = await getMyInquiries();
+      setInquiries(data.data || []);
+    } catch (e) {
+      toast.error("Failed to delete message");
+    }
+  };
+
+  const handleSelectChat = (id) => {
+    setSelectedId(id);
+  };
+
   const activeRfq = inquiries.find(r => r._id === selectedId);
 
   if (loading) return <div style={{ padding: 40, color: 'var(--primary)' }}>Loading conversations...</div>;
@@ -132,27 +151,25 @@ function BuyerRfqsView() {
       display: 'flex', 
       height: 'calc(100vh - 64px)', 
       background: '#fff', 
-      borderRadius: 12, 
-      overflow: 'hidden', 
-      boxShadow: 'var(--shadow-card)', 
-      margin: window.innerWidth > 768 ? '0 24px 24px' : '0' 
+      overflow: 'hidden'
     }}>
       {/* Conversations List - Hidden on mobile if a chat is selected */}
       <div style={{ 
-        width: window.innerWidth > 768 ? 320 : '100%', 
+        width: window.innerWidth > 768 ? 360 : '100%', 
         display: (window.innerWidth <= 768 && selectedId) ? 'none' : 'flex',
         borderRight: '1px solid var(--outline-variant)', 
         flexDirection: 'column', 
-        background: '#fcfcfc' 
+        background: '#fcfcfc',
+        height: '100%'
       }}>
-        <div style={{ padding: '24px 20px', borderBottom: '1px solid var(--outline-variant)' }}>
+        <div style={{ padding: '24px 20px', borderBottom: '1px solid var(--outline-variant)', flexShrink: 0 }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--primary)' }}>Chats</h2>
         </div>
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {inquiries.map(rfq => (
             <div 
               key={rfq._id} 
-              onClick={() => setSelectedId(rfq._id)}
+              onClick={() => handleSelectChat(rfq._id)}
               style={{ 
                 padding: '16px 20px', 
                 cursor: 'pointer', 
@@ -170,7 +187,7 @@ function BuyerRfqsView() {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {rfq.vendor_id?.company_name || "Unknown Vendor"}
+                    {rfq.vendor_id?.company_name || rfq.vendor_id?.full_name || "Unknown Vendor"}
                   </div>
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--on-surface-variant)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -183,11 +200,11 @@ function BuyerRfqsView() {
       </div>
 
       {/* Active Chat Window */}
-      <div style={{ flex: 1, display: window.innerWidth <= 768 && !selectedId ? 'none' : 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, display: window.innerWidth <= 768 && !selectedId ? 'none' : 'flex', flexDirection: 'column', height: '100%' }}>
         {activeRfq ? (
           <>
             {/* Header */}
-            <div style={{ padding: '12px 24px', borderBottom: '1px solid var(--outline-variant)', display: 'flex', alignItems: 'center', gap: 12, background: '#fff' }}>
+            <div style={{ padding: '12px 24px', borderBottom: '1px solid var(--outline-variant)', display: 'flex', alignItems: 'center', gap: 12, background: '#fff', flexShrink: 0 }}>
               {window.innerWidth <= 768 && (
                 <button 
                   onClick={() => setSelectedId(null)}
@@ -205,6 +222,13 @@ function BuyerRfqsView() {
                   <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--success)' }} /> Verified Professional
                 </div>
               </div>
+              <button 
+                onClick={() => handleDelete(activeRfq._id)}
+                style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer', padding: 8, opacity: 0.6 }}
+                title="Delete Conversation"
+              >
+                <span className="material-icons-round">delete_outline</span>
+              </button>
             </div>
 
             {/* Messages Area */}
@@ -223,33 +247,43 @@ function BuyerRfqsView() {
                  </div>
                </div>
 
-               {activeRfq.replies?.map((reply, idx) => {
-                 const isMe = reply.sender_id === user?.id || reply.sender_id === user?._id;
-                 return (
-                   <div key={idx} style={{ alignSelf: isMe ? 'flex-end' : 'flex-start', maxWidth: '75%' }}>
-                     <div style={{ 
-                        background: isMe ? 'var(--primary)' : '#fff', 
-                        color: isMe ? '#fff' : 'var(--primary)', 
-                        padding: '10px 16px', 
-                        borderRadius: isMe ? '16px 16px 0 16px' : '16px 16px 16px 0',
-                        fontSize: 14, 
-                        lineHeight: 1.5,
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-                        border: isMe ? 'none' : '1px solid var(--outline-variant)'
-                      }}>
-                       {reply.message}
-                     </div>
-                     <div style={{ fontSize: 10, color: 'var(--on-surface-variant)', textAlign: isMe ? 'right' : 'left', marginTop: 4 }}>
-                       {new Date(reply.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                     </div>
-                   </div>
-                 )
-               })}
+                {activeRfq.replies?.map((reply, idx) => {
+                  const isMe = reply.sender_id === user?.id || reply.sender_id === user?._id;
+                  return (
+                    <div key={idx} style={{ alignSelf: isMe ? 'flex-end' : 'flex-start', maxWidth: '75%' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, flexDirection: isMe ? 'row-reverse' : 'row' }}>
+                        <div style={{ 
+                           background: isMe ? 'var(--primary)' : '#fff', 
+                           color: isMe ? '#fff' : 'var(--primary)', 
+                           padding: '10px 16px', 
+                           borderRadius: isMe ? '16px 16px 0 16px' : '16px 16px 16px 0',
+                           fontSize: 14, 
+                           lineHeight: 1.5,
+                           boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                           border: isMe ? 'none' : '1px solid var(--outline-variant)'
+                         }}>
+                          {reply.message}
+                        </div>
+                        {isMe && (
+                          <button 
+                            onClick={() => handleDeleteReply(activeRfq._id, reply._id)}
+                            style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer', padding: 4, opacity: 0.3 }}
+                          >
+                            <span className="material-icons-round" style={{ fontSize: 16 }}>delete</span>
+                          </button>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 10, color: 'var(--on-surface-variant)', textAlign: isMe ? 'right' : 'left', marginTop: 4 }}>
+                        {new Date(reply.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                  )
+                })}
                <div ref={chatEndRef} />
             </div>
 
             {/* Input Area */}
-            <div style={{ padding: '20px 24px', borderTop: '1px solid var(--outline-variant)', display: 'flex', gap: 12, alignItems: 'center' }}>
+            <div style={{ padding: '20px 24px', borderTop: '1px solid var(--outline-variant)', display: 'flex', gap: 12, alignItems: 'center', background: '#fff', flexShrink: 0 }}>
               <input 
                 type="text" 
                 className="input" 
@@ -289,15 +323,20 @@ export default function BuyerDashboard() {
       .catch(() => {})
   }, []);
 
+  // Prevent parent page scrolling while in chat
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = 'auto';
+    };
+  }, []);
+
   return (
-    <div className="dashboard-layout">
-      <Sidebar rfqCount={rfqCount} />
-      <div className="dashboard-content" style={{ padding: '32px 0 0' }}>
-         <Routes>
-            <Route path="/" element={<BuyerRfqsView />} />
-            <Route path="rfqs" element={<BuyerRfqsView />} />
-         </Routes>
-      </div>
+    <div style={{ height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
+       <Routes>
+          <Route path="/" element={<BuyerRfqsView />} />
+          <Route path="rfqs" element={<BuyerRfqsView />} />
+       </Routes>
     </div>
   )
 }

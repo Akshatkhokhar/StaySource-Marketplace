@@ -1,5 +1,5 @@
 const express = require('express');
-const { createInquiry, getMyInquiries, replyToInquiry } = require('../controllers/inquiry.controller');
+const { createInquiry, getMyInquiries, replyToInquiry, deleteInquiry, deleteReply, markInquiryAsRead } = require('../controllers/inquiry.controller');
 const { protect } = require('../middlewares/auth.middleware');
 
 const router = express.Router();
@@ -14,5 +14,8 @@ router.post('/', (req, res, next) => {
 
 router.get('/my', protect, getMyInquiries);
 router.post('/:id/reply', protect, replyToInquiry);
+router.delete('/:id', protect, deleteInquiry);
+router.delete('/:id/messages/:replyId', protect, deleteReply);
+router.patch('/:id/read', protect, markInquiryAsRead);
 
 module.exports = router;

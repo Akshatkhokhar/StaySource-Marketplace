@@ -32,6 +32,14 @@ const InquirySchema = new mongoose.Schema({
     enum: ['pending', 'replied', 'closed'],
     default: 'pending'
   },
+  read_by_user: {
+    type: Boolean,
+    default: false
+  },
+  read_by_vendor: {
+    type: Boolean,
+    default: false
+  },
   replies: [{
     sender_id: {
       type: mongoose.Schema.Types.ObjectId,

@@ -22,8 +22,8 @@ function StarRating({ rating, size = 14 }) {
 }
 
 function ReviewCard({ r }) {
-  const initials = r.user_id?.first_name ? (r.user_id.first_name[0] + (r.user_id.last_name ? r.user_id.last_name[0] : '')).toUpperCase() : 'U';
-  const authorName = r.user_id ? `${r.user_id.first_name} ${r.user_id.last_name || ''}` : 'Verified Buyer';
+  const initials = r.user_id?.full_name ? r.user_id.full_name.charAt(0).toUpperCase() : 'U';
+  const authorName = r.user_id?.full_name || 'Verified Buyer';
   
   return (
     <div style={{ background: '#fff', borderRadius: 8, padding: 24, boxShadow: 'var(--shadow-card)', border: '1px solid var(--outline-variant)' }}>

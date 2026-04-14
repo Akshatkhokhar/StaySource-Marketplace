@@ -6,7 +6,7 @@ const createReview = async (reviewData) => {
 
 const getReviewsByVendor = async (vendorId) => {
   return await Review.find({ vendor_id: vendorId })
-    .populate('user_id', 'first_name last_name')
+    .populate('user_id', 'full_name')
     .sort({ createdAt: -1 });
 };
 

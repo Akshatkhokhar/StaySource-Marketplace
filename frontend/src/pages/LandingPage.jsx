@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { getAllVendors } from '../api/vendor.api'
 import { toast } from 'react-toastify'
 import { useAuth } from '../context/AuthContext'
@@ -87,11 +87,18 @@ function VendorCard({ vendor }) {
 }
 
 export default function LandingPage() {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
+  const navigate = useNavigate()
   const [featuredVendors, setFeaturedVendors] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Redirect vendors away from the landing page
+    if (isAuthenticated && user?.role === 'vendor') {
+      navigate('/dashboard', { replace: true });
+      return;
+    }
+
     const fetchVendors = async () => {
       try {
         const data = await getAllVendors(1, 3);

@@ -22,9 +22,10 @@ export default function BrowseVendors() {
   const [searchParams] = useSearchParams()
   const initialCat = searchParams.get('category') || searchParams.get('cat') || ''
 
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [vendors, setVendors] = useState([])
-  const [pagination, setPagination] = useState({})
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
   const [allCategories, setAllCategories] = useState([])
   // Filters
   const [search, setSearch] = useState('')
@@ -32,42 +33,69 @@ export default function BrowseVendors() {
   const [stateFilter, setStateFilter] = useState('')
   const [cityFilter, setCityFilter] = useState('')
 
+  const [debouncedSearch, setDebouncedSearch] = useState(search)
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search)
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [search])
+
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
         const cats = await getAllCategories();
-        // Assume API returns array of objects like { id, name } or raw strings
         setAllCategories(cats.data || []);
-      } catch (error) {
-        console.error("Categories fetch error", error);
-      }
+      } catch (error) {}
     }
     fetchInitialData();
   }, []);
 
-  const fetchVendorsData = async () => {
+  const fetchVendorsData = async (pageNum, isNewSearch = false) => {
+    if (loading) return;
     setLoading(true);
     try {
       const data = await searchVendors({
         category: selectedCat,
         state: stateFilter,
         city: cityFilter,
-        keyword: search,
-        page: 1,
-        limit: 50
+        keyword: debouncedSearch,
+        page: pageNum,
+        limit: 10
       });
-      setVendors(data.data || []);
-      setPagination(data.pagination || {});
+      
+      const newVendors = data.data || [];
+      if (isNewSearch) {
+        setVendors(newVendors);
+      } else {
+        setVendors(prev => [...prev, ...newVendors]);
+      }
+      
+      setHasMore(newVendors.length === 10);
+      setPage(pageNum);
     } catch (error) {
       toast.error("Error fetching vendors");
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   }
 
+  // Reset and fetch when filters change
   useEffect(() => {
-    fetchVendorsData();
-  }, [selectedCat, stateFilter, cityFilter, search]);
+    fetchVendorsData(1, true);
+  }, [selectedCat, stateFilter, cityFilter, debouncedSearch]);
+
+  // Infinite scroll listener
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 100 && hasMore && !loading) {
+        fetchVendorsData(page + 1);
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [page, hasMore, loading, selectedCat, stateFilter, cityFilter, search]);
 
   const clearFilters = () => {
     setSelectedCat('');
@@ -187,7 +215,7 @@ export default function BrowseVendors() {
               </p>
             </div>
 
-            {loading ? (
+            {vendors.length === 0 && loading ? (
               <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--on-surface-variant)' }}>
                  <p style={{ fontSize: 16, fontWeight: 600 }}>Loading vendors...</p>
               </div>
@@ -198,47 +226,58 @@ export default function BrowseVendors() {
                 <p style={{ fontSize: 13 }}>Try adjusting or clearing your filters</p>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {vendors.map(vendor => (
-                  <div
-                    key={vendor._id || vendor.id}
-                    className="vendor-card"
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: 20, padding: '20px 24px' }}
-                  >
-                    {/* Avatar */}
-                    <div className="vendor-avatar" style={{ flexShrink: 0 }}>{getInitials(vendor.company_name)}</div>
+              <>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {vendors.map(vendor => (
+                    <div
+                      key={vendor._id || vendor.id}
+                      className="vendor-card"
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 20, padding: '20px 24px' }}
+                    >
+                      {/* Avatar */}
+                      <div className="vendor-avatar" style={{ flexShrink: 0 }}>{getInitials(vendor.company_name)}</div>
 
-                    {/* Info */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 3 }}>
-                        <span className="vendor-name">{vendor.company_name}</span>
-                        {vendor.is_featured && <span className="badge-premium">Featured</span>}
-                      </div>
-                      <p className="vendor-tagline" style={{ maxWidth: 500, marginBottom: 10, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{vendor.description || 'Premium vendor...'}</p>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                          <StarRating rating={vendor.rating || 0} />
-                          <span style={{ fontSize: 12, color: 'var(--on-surface-variant)' }}>{vendor.rating || 0} ({vendor.reviews_count || 0} reviews)</span>
+                      {/* Info */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 3 }}>
+                          <span className="vendor-name">{vendor.company_name}</span>
+                          {vendor.is_featured && <span className="badge-premium">Featured</span>}
                         </div>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--on-surface-variant)' }}>
-                          <span className="material-icons-round" style={{ fontSize: 13 }}>location_on</span>
-                          {vendor.city || 'Global'}, {vendor.state || 'US'}
-                        </span>
+                        <p className="vendor-tagline" style={{ maxWidth: 500, marginBottom: 10, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{vendor.description || 'Premium vendor...'}</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                            <StarRating rating={vendor.rating || 0} />
+                            <span style={{ fontSize: 12, color: 'var(--on-surface-variant)' }}>{vendor.rating || 0} ({vendor.reviews_count || 0} reviews)</span>
+                          </div>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--on-surface-variant)' }}>
+                            <span className="material-icons-round" style={{ fontSize: 13 }}>location_on</span>
+                            {vendor.city || 'Global'}, {vendor.state || 'US'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
+                        <Link to={`/vendors/${vendor._id || vendor.id}`} className="btn btn-primary btn-sm">
+                          View Profile
+                        </Link>
                       </div>
                     </div>
+                  ))}
+                </div>
 
-                    {/* Actions */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
-                      <Link to={`/vendors/${vendor._id || vendor.id}`} className="btn btn-primary btn-sm">
-                        View Profile
-                      </Link>
-                      <button className="btn btn-outline btn-sm">
-                        Send RFQ
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                {loading && (
+                   <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--on-surface-variant)' }}>
+                      <p style={{ fontSize: 14 }}>Loading more...</p>
+                   </div>
+                )}
+
+                {!hasMore && vendors.length > 0 && (
+                   <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--on-surface-variant)', fontSize: 13 }}>
+                      You've reached the end of the list.
+                   </div>
+                )}
+              </>
             )}
           </div>
         </div>

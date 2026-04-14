@@ -119,8 +119,16 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const loginSocial = (u, t) => {
+    localStorage.setItem('staysource_token', t);
+    localStorage.setItem('staysource_user', JSON.stringify(u));
+    setToken(t);
+    setUser(u);
+    setIsAuthenticated(true);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, isAuthenticated, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, isAuthenticated, login, register, logout, loginSocial }}>
       {children}
     </AuthContext.Provider>
   );

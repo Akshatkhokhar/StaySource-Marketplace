@@ -41,7 +41,7 @@ const searchVendors = async (queryParams) => {
     .populate('categories')
     .skip(skip)
     .limit(limit)
-    .sort({ is_featured: -1, createdAt: -1 });
+    .sort({ createdAt: -1, is_featured: -1 });
 
   const total = await Vendor.countDocuments(query);
 

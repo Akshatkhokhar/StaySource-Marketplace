@@ -37,13 +37,23 @@ export default function Navbar() {
       <div className="container">
         <div className="navbar-inner">
           {/* Logo */}
-          <Link to="/" className="navbar-logo">
-            <div className="navbar-logo-mark">SS</div>
-            <span className="navbar-logo-text" style={{ display: 'flex', alignItems: 'baseline', letterSpacing: '-0.02em', fontSize: 22 }}>
-              <span style={{ fontWeight: 800, color: '#1A2E4A' }}>Stay</span>
-              <span style={{ fontWeight: 800, color: '#C8A951' }}>Source</span>
-            </span>
-          </Link>
+          {!isAuthenticated ? (
+            <Link to="/" className="navbar-logo">
+              <div className="navbar-logo-mark">SS</div>
+              <span className="navbar-logo-text" style={{ display: 'flex', alignItems: 'baseline', letterSpacing: '-0.02em', fontSize: 22 }}>
+                <span style={{ fontWeight: 800, color: '#1A2E4A' }}>Stay</span>
+                <span style={{ fontWeight: 800, color: '#C8A951' }}>Source</span>
+              </span>
+            </Link>
+          ) : (
+            <div className="navbar-logo" style={{ cursor: 'default' }}>
+              <div className="navbar-logo-mark">SS</div>
+              <span className="navbar-logo-text" style={{ display: 'flex', alignItems: 'baseline', letterSpacing: '-0.02em', fontSize: 22 }}>
+                <span style={{ fontWeight: 800, color: '#1A2E4A' }}>Stay</span>
+                <span style={{ fontWeight: 800, color: '#C8A951' }}>Source</span>
+              </span>
+            </div>
+          )}
 
           {/* Nav links */}
           <div className="navbar-nav">
@@ -51,7 +61,11 @@ export default function Navbar() {
                <Link to="/dashboard" className={`nav-link ${isActive('/dashboard')}`}>Dashboard</Link>
             )}
             {(isAuthenticated && user?.role === 'hotel_owner') && (
-               <Link to="/buyer-dashboard" className={`nav-link ${isActive('/buyer-dashboard')}`}>Buyer Dashboard</Link>
+               <>
+                  <Link to="/vendors" className={`nav-link ${isActive('/vendors')}`}>Browse Market</Link>
+                  <Link to="/buyer-dashboard" className={`nav-link ${isActive('/buyer-dashboard')}`}>Messages</Link>
+                  <Link to="/saved-vendors" className={`nav-link ${isActive('/saved-vendors')}`}>Saved Vendors</Link>
+               </>
             )}
           </div>
 

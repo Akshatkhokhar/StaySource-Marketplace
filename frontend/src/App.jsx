@@ -1,7 +1,6 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import Navbar from './components/Navbar';
-import Footer from './components/Footer';
 import LandingPage from './pages/LandingPage';
 import BrowseVendors from './pages/BrowseVendors';
 import VendorProfile from './pages/VendorProfile';
@@ -10,6 +9,7 @@ import RegisterPage from './pages/RegisterPage';
 import VendorDashboard from './pages/VendorDashboard';
 import BuyerDashboard from './pages/BuyerDashboard';
 import SavedVendors from './pages/SavedVendors';
+import NotFound from './pages/NotFound';
 import { AuthProvider } from './context/AuthContext';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -58,13 +58,16 @@ export default function App() {
             </VendorRoute>
           } />
 
-          {/* Dashboard: sidebar layout - Buyer Protected */}
+          {/* Buyer Dashboard: included in main navbar layout */}
           <Route path="/buyer-dashboard/*" element={
             <HotelOwnerRoute>
-              <BuyerDashboard />
+               <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+                 <Navbar />
+                 <BuyerDashboard />
+               </div>
             </HotelOwnerRoute>
           } />
-          
+
           {/* Main pages */}
           <Route path="/*" element={
             <>
@@ -87,9 +90,9 @@ export default function App() {
                        <SavedVendors />
                      </HotelOwnerRoute>
                   } />
+                  <Route path="*" element={<NotFound />} />
                 </Routes>
               </main>
-              <Footer />
             </>
           } />
         </Routes>
