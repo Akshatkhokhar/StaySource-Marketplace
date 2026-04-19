@@ -29,34 +29,5 @@ router.post('/login', loginValidation, login);
 router.post('/logout', protect, logout);
 router.get('/me', protect, getMe);
 
-// Google OAuth
-const passport = require('passport');
-router.get('/google', (req, res, next) => {
-  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-    return res.status(501).json({ 
-      success: false, 
-      message: 'Google OAuth is not configured on this server.' 
-    });
-  }
-  passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
-});
-
-router.get('/google/callback', 
-  passport.authenticate('google', { failureRedirect: `${process.env.CLIENT_URL}/login`, session: false }),
-  (req, res) => {
-    // Successfully authenticated, generate token and redirect to frontend
-    const authService = require('../services/auth.service');
-    const token = authService.signToken(req.user._id);
-    const userJson = JSON.stringify({
-      _id: req.user._id,
-      full_name: req.user.full_name,
-      email: req.user.email,
-      role: req.user.role
-    });
-    
-    // Redirect with token and user data
-    res.redirect(`${process.env.CLIENT_URL}/auth/google/success?token=${token}&user=${encodeURIComponent(userJson)}`);
-  }
-);
 
 module.exports = router;

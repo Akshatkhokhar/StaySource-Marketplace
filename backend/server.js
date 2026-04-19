@@ -32,9 +32,6 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-const passport = require('passport');
-require('./src/config/passport');
-app.use(passport.initialize());
 
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
@@ -42,6 +39,14 @@ if (process.env.NODE_ENV === 'development') {
 
 // Routes hookup
 app.use('/api', routes);
+
+// 404 handler for non-API routes (or any route not caught by the API router)
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: 'Page not found'
+  });
+});
 
 // Global Error Handler
 app.use(errorHandler);

@@ -17,5 +17,12 @@ router.use('/search', searchRoutes);
 router.use('/inquiries', inquiryRoutes);
 router.use('/products', productRoutes);
 router.use('/reviews', reviewRoutes);
+// Catch-all for undefined API routes
+router.all('*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `Route ${req.originalUrl} not found on this server`
+  });
+});
 
 module.exports = router;
